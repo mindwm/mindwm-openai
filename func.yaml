@@ -1,0 +1,19 @@
+specVersion: 0.36.0
+name: openai-service
+runtime: python
+registry: ghcr.io/mindwm/mindwm-openai
+namespace: context-team-a
+created: 2024-07-02T11:50:22.783782769Z
+build:
+  builder: pack
+run:
+  envs:
+  - name: NEO4J_URL
+    value: team-a-neo4j-neo4j.context-team-a:7687
+  - name: NEO4J_USERNAME
+    value: neo4j
+  - name: NEO4J_PASSWORD
+    value: password
+deploy:
+  namespace: context-team-a
+  image: ghcr.io/mindwm/mindwm-openai/openai-service@sha256:cc44489f946d80d840072288ca194b8b3400d72f0924730c8adaa371641a4ab9
