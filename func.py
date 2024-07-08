@@ -80,7 +80,11 @@ def main(context: Context):
 	
     if "# chatgpt" in user_input:
         tmux_pane = iodoc.tmux_pane.get()
-        element_id = tmux_pane.element_id  
+        element_id = tmux_pane.element_id
+        results, meta = results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc")
+        if len(results) <= 1:
+            return "", 400
+  
         results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc ORDER BY doc.time DESC SKIP 1 LIMIT 1") 
          
         iodoc2 = IoDocument.inflate(results[meta.index('doc')][0])
@@ -97,6 +101,6 @@ def main(context: Context):
         headers, body = cloudevents.conversion.to_structured(output_event)
         print(body, file=sys.stderr)
         print(headers, file=sys.stderr)
-        return body, 200, headers
+        return body, 200, headers    
 
     return "", 200
