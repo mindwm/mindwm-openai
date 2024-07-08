@@ -67,9 +67,6 @@ def main(context: Context):
     The context parameter contains the Flask request object and any
     CloudEvent received with the request.
     """
-
-    print('Hello world!', file=sys.stderr)
-
     event = from_http(context.request.headers, context.request.data)
     data = event.data
     payload = data['payload']
