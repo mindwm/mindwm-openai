@@ -10,6 +10,7 @@ from neo4j import GraphDatabase
 from neomodel import (config, StructuredNode, StringProperty, IntegerProperty,
 	UniqueIdProperty, RelationshipTo, RelationshipFrom, Relationship, One, OneOrMore,
     DateTimeProperty)
+from neomodel.properties import JSONProperty
 from neomodel import db
 
 from openai import OpenAI
@@ -51,6 +52,7 @@ class TmuxPane(StructuredNode):
     session_id = IntegerProperty(required = True)
     session = RelationshipFrom('TmuxSession', 'HAS_TMUX_PANE', cardinality=One)
     title = StringProperty()
+	contextParameters = JSONProperty(default={})
     io_document = Relationship('IoDocument', 'HAS_IO_DOCUMENT')
 
 class IoDocument(StructuredNode):
@@ -84,14 +86,14 @@ def main(context: Context):
         results, meta = results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc")
         if len(results) <= 1:
             return "", 400
-  
+
         results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc ORDER BY doc.time DESC SKIP 1 LIMIT 1") 
          
         iodoc2 = IoDocument.inflate(results[meta.index('doc')][0])
 
         input_text = user_input + ": " + iodoc2.output
         chat_completion = client.chat.completions.create(model=model_engine, messages=[{"role": "user", "content": input_text}])
-        message = chat_completion.choices[0].message.content
+        message = chat_completion.choices[0].message.contentclear
 
         attrs = {"specversion": "1.0", "type": "openai.service.output", "source": "/openai-service", "datacontenttype": "application/json"}
         data = {"chatgpt_answer": message}
@@ -102,5 +104,12 @@ def main(context: Context):
         print(body, file=sys.stderr)
         print(headers, file=sys.stderr)
         return body, 200, headers    
+    elif "# prompt" in user_input:
+        print("promt input", file=sys.stderr)
+        tmux_pane = iodoc.tmux_pane.get()
+        print(tmux_pane, file=sys.stderr)
+        tmux_pane.prompt_input = user_input
+        print(user_input, file=sys.stderr)
+        tmux_pane.save()
 
     return "", 200
