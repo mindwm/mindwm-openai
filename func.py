@@ -52,7 +52,7 @@ class TmuxPane(StructuredNode):
     session_id = IntegerProperty(required = True)
     session = RelationshipFrom('TmuxSession', 'HAS_TMUX_PANE', cardinality=One)
     title = StringProperty()
-	contextParameters = JSONProperty(default={})
+    contextParameters = JSONProperty(default={})
     io_document = Relationship('IoDocument', 'HAS_IO_DOCUMENT')
 
 class IoDocument(StructuredNode):
@@ -81,7 +81,10 @@ def main(context: Context):
     user_input = iodoc.user_input
 	
     if "# chatgpt" in user_input:
+        user_input = user_input.replace("# chatgpt", "").strip()
+
         tmux_pane = iodoc.tmux_pane.get()
+        prompt = tmux_pane.contextParameters["prompt"]
         element_id = tmux_pane.element_id
         results, meta = results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc")
         if len(results) <= 1:
@@ -91,9 +94,12 @@ def main(context: Context):
          
         iodoc2 = IoDocument.inflate(results[meta.index('doc')][0])
 
-        input_text = user_input + ": " + iodoc2.output
+        input_text = user_input + "\n\n" + iodoc2.output
+        if prompt != "":
+            input_text = prompt + "\n" + input_text
+        
         chat_completion = client.chat.completions.create(model=model_engine, messages=[{"role": "user", "content": input_text}])
-        message = chat_completion.choices[0].message.contentclear
+        message = chat_completion.choices[0].message.content
 
         attrs = {"specversion": "1.0", "type": "openai.service.output", "source": "/openai-service", "datacontenttype": "application/json"}
         data = {"chatgpt_answer": message}
@@ -103,13 +109,10 @@ def main(context: Context):
         headers, body = cloudevents.conversion.to_structured(output_event)
         print(body, file=sys.stderr)
         print(headers, file=sys.stderr)
-        return body, 200, headers    
+        return body, 200, headers
     elif "# prompt" in user_input:
-        print("promt input", file=sys.stderr)
         tmux_pane = iodoc.tmux_pane.get()
-        print(tmux_pane, file=sys.stderr)
-        tmux_pane.prompt_input = user_input
-        print(user_input, file=sys.stderr)
+        tmux_pane.contextParameters["prompt"] = user_input.replace("# prompt", "").strip()
         tmux_pane.save()
 
     return "", 200
