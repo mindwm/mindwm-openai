@@ -84,7 +84,6 @@ def main(context: Context):
         user_input = user_input.replace("# chatgpt", "").strip()
 
         tmux_pane = iodoc.tmux_pane.get()
-        prompt = tmux_pane.contextParameters["prompt"]
         element_id = tmux_pane.element_id
         results, meta = results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc")
         if len(results) <= 1:
@@ -95,7 +94,8 @@ def main(context: Context):
         iodoc2 = IoDocument.inflate(results[meta.index('doc')][0])
 
         input_text = user_input + "\n\n" + iodoc2.output
-        if prompt != "":
+        if "prompt" in tmux_pane.contextParameters:
+            prompt = tmux_pane.contextParameters["prompt"]
             input_text = prompt + "\n" + input_text
         
         chat_completion = client.chat.completions.create(model=model_engine, messages=[{"role": "user", "content": input_text}])
@@ -110,9 +110,7 @@ def main(context: Context):
         print(body, file=sys.stderr)
         print(headers, file=sys.stderr)
         return body, 200, headers
-    elif "# prompt" in user_input:
-        tmux_pane = iodoc.tmux_pane.get()
-        tmux_pane.contextParameters["prompt"] = user_input.replace("# prompt", "").strip()
-        tmux_pane.save()
+
+
 
     return "", 200
