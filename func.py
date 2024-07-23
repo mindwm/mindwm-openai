@@ -1,5 +1,6 @@
 from parliament import Context
 
+import requests
 import cloudevents
 from cloudevents.http import from_http, CloudEvent
 import sys
@@ -80,6 +81,7 @@ def main(context: Context):
     iodoc = IoDocument.inflate(results[meta.index('n')][0])
     user_input = iodoc.user_input
 	
+
     if "# chatgpt" in user_input:
         user_input = user_input.replace("# chatgpt", "").strip()
 
@@ -87,7 +89,8 @@ def main(context: Context):
         element_id = tmux_pane.element_id
         results, meta = results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc")
         if len(results) <= 1:
-            return "", 400
+            print("previous message was not found", file=sys.stderr)
+            return "", 200
 
         results, meta = db.cypher_query(f"MATCH (pane:TmuxPane)-[:HAS_IO_DOCUMENT]->(doc:IoDocument) WHERE ID(pane) = {element_id} RETURN doc ORDER BY doc.time DESC SKIP 1 LIMIT 1") 
          
@@ -98,19 +101,59 @@ def main(context: Context):
             prompt = tmux_pane.contextParameters["prompt"]
             input_text = prompt + "\n" + input_text
         
-        chat_completion = client.chat.completions.create(model=model_engine, messages=[{"role": "user", "content": input_text}])
-        message = chat_completion.choices[0].message.content
+        endpoint = ""
+
+        data = {}
+        headers = {}
+        if "OPENAI_ENDPOINT" in tmux_pane.contextParameters:
+            endpoint = tmux_pane.contextParameters["OPENAI_ENDPOINT"]
+            data = {"model": "llama-3-instruct-70b", "messages": [{"role": "user", "content": input_text}]}
+            headers = {"Content-Type": "application/json"}
+        else:
+            if "OPENAI_TOKEN" not in tmux_pane.contextParameters:
+                print("OPENAI_TOKEN is empty", file=sys.stderr)
+
+                return "", 200
+            openai_token = tmux_pane.contextParameters["OPENAI_TOKEN"]
+            endpoint = "https://api.openai.com/v1/chat/completions"
+            data = {"model": "gpt-4", "messages": [{'role': 'user', 'content': input_text}]}
+            headers = {"Content-Type": "application/json", 'Authorization': f"Bearer {openai_token}"}
+
+        responseJSON = make_request(endpoint, headers, data)
+        if not responseJSON:
+            print("failed to make request", file=sys.stderr)
+            return "", 200
+
+        answer = responseJSON["choices"][0]["message"]["content"]
 
         attrs = {"specversion": "1.0", "type": "openai.service.output", "source": "/openai-service", "datacontenttype": "application/json"}
-        data = {"chatgpt_answer": message}
+        data = {"chatgpt_answer": answer}
+
 
         output_event = CloudEvent(attrs, data)
         
         headers, body = cloudevents.conversion.to_structured(output_event)
         print(body, file=sys.stderr)
         print(headers, file=sys.stderr)
+
         return body, 200, headers
 
 
 
     return "", 200
+
+
+def make_request(endpoint, headers, data):
+    try:
+        response = requests.post(endpoint, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"Connection error occurred: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        print(f"Timeout error occurred: {timeout_err}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"An error occurred: {req_err}")
+    return None
