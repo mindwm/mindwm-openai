@@ -1,0 +1,25 @@
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: knfunc
+  namespace: context-name
+spec:
+  broker: context-name-broker
+  delivery:
+    deadLetterSink:
+      ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: context-name-broker-dead-letter
+        namespace: context-name
+  filter: {}
+  filters:
+    any:
+    - exact:
+        type: touch
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: knfunc
+      namespace: context-name

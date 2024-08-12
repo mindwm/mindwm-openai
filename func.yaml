@@ -1,19 +1,25 @@
-specVersion: 0.36.0
-name: openai-service
-runtime: python
-registry: ghcr.io/mindwm/mindwm-openai
-namespace: context-team-a
-created: 2024-07-02T11:50:22.783782769Z
-build:
-  builder: pack
+name: mindwm-openai
+version: 0.1.0
+digest: sha256:b51b0f21ac69d5f4c478f1ced99d98bc9fc367e82d0dd50a31bbcca2e602ae61
+registry: 10.20.30.211:8080
+context: purple
+filters:
+  - all:
+      - exact:
+          type: iodocument
+      - prefix:
+          subject: '# chatgpt'
 run:
   envs:
-  - name: NEO4J_URL
-    value: team-a-neo4j-neo4j.context-team-a:7687
-  - name: NEO4J_USERNAME
-    value: neo4j
-  - name: NEO4J_PASSWORD
-    value: password
-deploy:
-  namespace: context-team-a
-  image: ghcr.io/mindwm/mindwm-openai/openai-service@sha256:cc44489f946d80d840072288ca194b8b3400d72f0924730c8adaa371641a4ab9
+    - name: NEO4J_URI
+      value: bolt://purple-neo4j:7687
+    - name: NEO4J_USERNAME
+      value: neo4j
+    - name: NEO4J_PASSWORD
+      value: password
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://otel-collector-opentelemetry-collector.monitoring-ng:4317
+    - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+      value: http://tempo-distributor.monitoring-ng:4317/v1/traces
+    - name: LOG_LEVEL
+      value: DEBUG

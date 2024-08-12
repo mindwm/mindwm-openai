@@ -1,0 +1,23 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: mindwm-openai
+  namespace: context-purple
+spec:
+  template:
+    spec:
+      containers:
+      - env:
+        - name: NEO4J_URI
+          value: bolt://purple-neo4j:7687
+        - name: NEO4J_USERNAME
+          value: neo4j
+        - name: NEO4J_PASSWORD
+          value: password
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector-opentelemetry-collector.monitoring-ng:4317
+        - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+          value: http://tempo-distributor.monitoring-ng:4317/v1/traces
+        - name: LOG_LEVEL
+          value: INFO
+        image: 10.20.30.211:8080/mindwm-openai:0.1.0@sha256:c60829f2b7185bffa0aa6fcc3fb99fbf6bce5699cb83bdc4cc9453b644c9d7b3

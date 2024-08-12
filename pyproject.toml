@@ -1,0 +1,29 @@
+[project]
+name = "mindwm-knfunc"
+version = "0.1.0"
+authors = [
+  { name="Omg Bebebe", email="omgbebebe@gmail.com" },
+]
+description = "MindWM Knative func exapley"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Linux",
+]
+dependencies = [
+#  "parliament"
+]
+
+[project.scripts]
+mindwm-knfunc = "knfunc.server:run"
+render-k8s-resources = "helpers.build_and_deploy:renderResources"
+
+[project.urls]
+Homepage = "https://github.com/mindwm/mindwm-manager"
+Issues = "https://github.com/mindwm/mindwm-manager/issues"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
